@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlarmGPT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Taviraj:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0e12;--surface:#16181f;--surface2:#1e2029;--border:#2a2d3a;
+  --accent:#f5a623;--accent-dim:rgba(245,166,35,0.12);
+  --red:#ff4d6a;--green:#3de87a;--text:#e8eaf0;--muted:#6b7080;
+  --clock:'Space Mono',monospace;--body:'Taviraj',serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--body)}
+.shell{max-width:420px;margin:0 auto;min-height:100vh;position:relative;display:flex;flex-direction:column}
+.screen{display:none;flex-direction:column;flex:1;padding-bottom:90px}
+.screen.active{display:flex}
+.header{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0}
+.header-title{font-family:var(--clock);font-size:13px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+.icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+.clock-section{text-align:center;padding:28px 20px 24px}
+.clock-ring{display:inline-flex;align-items:center;justify-content:center;width:200px;height:200px;border-radius:50%;border:1.5px solid var(--border);background:radial-gradient(circle at 30% 30%,#1e2029,#0d0e12);box-shadow:0 0 60px rgba(245,166,35,.06),inset 0 0 40px rgba(0,0,0,.4);position:relative}
+.clock-ring::before{content:'';position:absolute;inset:8px;border-radius:50%;border:1px solid var(--border);opacity:.4}
+.clock-display{font-family:var(--clock);font-size:38px;font-weight:700;color:var(--text);letter-spacing:-1px;line-height:1}
+.clock-date{font-size:13px;color:var(--muted);margin-top:14px;letter-spacing:.5px}
+.section{padding:0 20px;flex:1}
+.section-label{font-family:var(--clock);font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:12px}
+.alarm-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;transition:border-color .2s}
+.alarm-card.active{border-color:rgba(245,166,35,.3)}
+.alarm-time-block{min-width:80px}
+.alarm-time-big{font-family:var(--clock);font-size:24px;font-weight:700;color:var(--text)}
+.alarm-card.active .alarm-time-big{color:var(--accent)}
+.alarm-date-small{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--clock)}
+.alarm-info{flex:1;min-width:0}
+.alarm-prompt-preview{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alarm-status{font-size:11px;color:var(--green);font-family:var(--clock);letter-spacing:1px;margin-top:3px}
+.alarm-status.fired{color:var(--muted)}
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background .3s;border:none;flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:white;transition:transform .3s}
+.toggle.on::after{transform:translateX(20px)}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px;transition:color .2s}
+.del-btn:hover{color:var(--red)}
+.empty-state{text-align:center;color:var(--muted);font-size:14px;padding:30px;border:1px dashed var(--border);border-radius:16px}
+.fab{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;background:var(--accent);color:#000;border:none;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(245,166,35,.4);transition:transform .2s,box-shadow .2s;z-index:100}
+.fab:hover{transform:translateX(-50%) scale(1.08);box-shadow:0 6px 32px rgba(245,166,35,.55)}
+.log-section{padding:0 20px;margin-top:16px}
+.log-item{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.log-time{color:var(--muted);font-family:var(--clock);font-size:11px;flex-shrink:0;margin-top:1px}
+.log-msg{color:var(--text)}
+.view-header{display:flex;align-items:center;gap:14px;margin-bottom:28px;padding:20px 20px 0}
+.view-title{font-family:var(--clock);font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--text)}
+.view-body{padding:0 20px;flex:1;overflow-y:auto}
+.field{margin-bottom:20px}
+.field label{display:block;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--clock)}
+.field input,.field textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);font-size:15px;font-family:var(--body);outline:none;transition:border-color .2s;resize:vertical;direction:rtl}
+.field input:focus,.field textarea:focus{border-color:var(--accent)}
+.field textarea{min-height:90px}
+.time-row{display:flex;gap:10px}
+.time-row input{font-family:var(--clock);font-size:22px;text-align:center;padding:14px 8px;direction:ltr}
+.calendar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-month{font-family:var(--clock);font-size:13px;letter-spacing:2px;color:var(--text);text-transform:uppercase}
+.cal-nav{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.cal-nav:hover{border-color:var(--accent);color:var(--accent)}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px}
+.cal-wd{text-align:center;font-family:var(--clock);font-size:10px;color:var(--muted);letter-spacing:1px;padding:4px 0}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-family:var(--clock);font-size:12px;cursor:pointer;color:var(--text);transition:all .15s;border:1px solid transparent}
+.cal-day:hover:not(.past):not(.other-month){background:var(--surface2);border-color:var(--border)}
+.cal-day.today{border-color:var(--border);color:var(--accent)}
+.cal-day.selected{background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)}
+.cal-day.other-month{color:var(--muted);opacity:.4}
+.cal-day.past{opacity:.25;cursor:not-allowed}
+.selected-date-display{background:var(--accent-dim);border:1px solid rgba(245,166,35,.25);border-radius:10px;padding:10px 14px;font-family:var(--clock);font-size:13px;color:var(--accent);margin-bottom:20px;text-align:center;letter-spacing:1px}
+.btn-primary{width:100%;padding:16px;background:var(--accent);color:#000;border:none;border-radius:14px;font-size:15px;font-family:var(--clock);letter-spacing:1px;cursor:pointer;margin-top:10px;transition:opacity .2s}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary:not(:disabled):hover{opacity:.88}
+.info-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:20px}
+.info-box a{color:var(--accent);text-decoration:none}
+.info-box code{color:var(--accent);font-family:var(--clock);font-size:11px}
+.divider{height:1px;background:var(--border);margin:24px 0}
+.server-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(61,232,122,.1);border:1px solid rgba(61,232,122,.2);border-radius:8px;padding:4px 10px;font-family:var(--clock);font-size:11px;color:var(--green);letter-spacing:1px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- MAIN -->
+  <div class="screen active" id="screen-main">
+    <div class="header">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="header-title">AlarmGPT</span>
+        <span class="server-badge"><span class="dot"></span>שרת פעיל 24/7</span>
+      </div>
+      <button class="icon-btn" onclick="showScreen('settings')">⚙️</button>
+    </div>
+    <div class="clock-section">
+      <div class="clock-ring">
+        <div class="clock-display" id="clock-display">00:00</div>
+      </div>
+      <div class="clock-date" id="clock-date"></div>
+    </div>
+    <div class="section">
+      <div class="section-label">שעונים מעוררים</div>
+      <div id="alarms-list"><div class="empty-state">טוען...</div></div>
+    </div>
+    <div class="log-section" id="log-section" style="display:none">
+      <div class="section-label">יומן פעילות</div>
+      <div id="logs-list"></div>
+    </div>
+    <button class="fab" onclick="showScreen('add')">+</button>
+  </div>
+
+  <!-- ADD -->
+  <div class="screen" id="screen-add">
+    <div class="view-header">
+      <button class="icon-btn" onclick="showScreen('main')">←</button>
+      <span class="view-title">שעון מעורר חדש</span>
+    </div>
+    <div class="view-body">
+      <div class="field">
+        <label>תאריך</label>
+        <div class="calendar" id="add-calendar"></div>
+      </div>
+      <div id="selected-date-display" style="display:none" class="selected-date-display"></div>
+      <div class="field">
+        <label>שעה</label>
+        <div class="time-row">
+          <input type="number" id="add-hh" min="0" max="23" value="07">
+          <input type="number" id="add-mm" min="0" max="59" value="00">
+        </div>
+      </div>
+      <div class="field">
+        <label>משימה ל-GPT</label>
+        <textarea id="add-prompt" placeholder="לדוגמה: תכתוב לי סיכום חדשות טכנולוגיה של היום" oninput="validateAdd()"></textarea>
+      </div>
+      <button class="btn-primary" id="add-btn" onclick="doAddAlarm()" disabled>הוסף שעון מעורר</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen" id="screen-settings">
+    <div class="view-header">
+      <button class="icon-btn" onclick="showScreen('main')">←</button>
+      <span class="view-title">הגדרות</span>
+    </div>
+    <div class="view-body">
+      <div class="info-box">
+        💡 <strong style="color:#e8eaf0">OpenAI API Key</strong> — נדרש לשליחת שאלות ל-ChatGPT.<br>
+        קבל מפתח ב: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>
+      </div>
+      <div class="field"><label>OpenAI API Key</label><input type="password" id="cfg-openai" placeholder="sk-..."></div>
+      <div class="divider"></div>
+      <div class="info-box">
+        📧 <strong style="color:#e8eaf0">שליחת אימייל דרך EmailJS</strong><br><br>
+        1. הירשם ב: <a href="https://www.emailjs.com" target="_blank">emailjs.com</a><br>
+        2. צור Email Service + Email Template עם:<br>
+        <code>{{alarm_time}}</code>, <code>{{alarm_prompt}}</code>, <code>{{gpt_response}}</code>
+      </div>
+      <div class="field"><label>כתובת אימייל</label><input type="email" id="cfg-email" placeholder="you@gmail.com"></div>
+      <div class="field"><label>EmailJS Service ID</label><input id="cfg-service" placeholder="service_xxxxxxx"></div>
+      <div class="field"><label>EmailJS Template ID</label><input id="cfg-template" placeholder="template_xxxxxxx"></div>
+      <div class="field"><label>EmailJS Public Key</label><input id="cfg-pubkey" placeholder="xxxxxxxxxxxxxxxxxxxx"></div>
+      <button class="btn-primary" onclick="saveSettings()">שמור הגדרות</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const HE_MONTHS=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+const HE_WD=["א","ב","ג","ד","ה","ו","ש"];
+
+let selectedDate=null,calViewYear,calViewMonth;
+
+function fmtTime(d){return d.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",hour12:false})}
+function fmtDate(d){return d.toLocaleDateString("he-IL",{weekday:"long",day:"numeric",month:"long"})}
+
+// Clock
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clock-display').textContent=fmtTime(now);
+  document.getElementById('clock-date').textContent=fmtDate(now);
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// Screen switching
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  if(name==='main'){loadAlarms();loadLogs();}
+  if(name==='add') initAddView();
+  if(name==='settings') loadSettingsForm();
+}
+
+// ── API calls ────────────────────────────────────────────────
+async function api(path,method='GET',body){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify(body);
+  const r=await fetch('/api'+path,opts);
+  return r.json();
+}
+
+async function loadAlarms(){
+  const alarms=await api('/alarms');
+  renderAlarms(alarms);
+}
+
+function renderAlarms(alarms){
+  const el=document.getElementById('alarms-list');
+  if(!alarms||alarms.length===0){el.innerHTML='<div class="empty-state">לחץ + כדי להוסיף שעון מעורר עם משימה ל-GPT</div>';return;}
+  el.innerHTML=alarms.map(a=>{
+    const dt=new Date(a.datetime);
+    const timeStr=dt.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",hour12:false});
+    const dateStr=dt.toLocaleDateString("he-IL",{day:"numeric",month:"short"});
+    const status=a.fired
+      ?'<div class="alarm-status fired">✓ הופעל</div>'
+      :a.enabled?'<div class="alarm-status">ON</div>':'';
+    return `<div class="alarm-card ${a.enabled?'active':''}">
+      <div class="alarm-time-block">
+        <div class="alarm-time-big">${timeStr}</div>
+        <div class="alarm-date-small">${dateStr}</div>
+      </div>
+      <div class="alarm-info">
+        <div class="alarm-prompt-preview">"${a.prompt}"</div>
+        ${status}
+      </div>
+      <button class="toggle ${a.enabled?'on':''}" onclick="toggleAlarm('${a.id}',${!a.enabled})"></button>
+      <button class="del-btn" onclick="deleteAlarm('${a.id}')">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+async function toggleAlarm(id,enabled){
+  await api('/alarms/'+id,'PATCH',{enabled,fired:false});
+  loadAlarms();
+}
+
+async function deleteAlarm(id){
+  await api('/alarms/'+id,'DELETE');
+  loadAlarms();
+}
+
+async function loadLogs(){
+  const logs=await api('/logs');
+  const sec=document.getElementById('log-section');
+  const el=document.getElementById('logs-list');
+  if(!logs||logs.length===0){sec.style.display='none';return;}
+  sec.style.display='block';
+  el.innerHTML=logs.map(l=>`<div class="log-item"><span class="log-time">${l.time}</span><span class="log-msg">${l.msg}</span></div>`).join('');
+}
+
+// Poll for updates every 30s
+setInterval(()=>{
+  if(document.getElementById('screen-main').classList.contains('active')){
+    loadAlarms();loadLogs();
+  }
+},30000);
+
+// ── Add Alarm ────────────────────────────────────────────────
+function initAddView(){
+  const now=new Date();now.setHours(0,0,0,0);
+  selectedDate=null;
+  calViewYear=now.getFullYear();calViewMonth=now.getMonth();
+  document.getElementById('add-hh').value="07";
+  document.getElementById('add-mm').value="00";
+  document.getElementById('add-prompt').value="";
+  document.getElementById('add-btn').disabled=true;
+  document.getElementById('selected-date-display').style.display='none';
+  renderCalendar();
+}
+
+function renderCalendar(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const firstDay=new Date(calViewYear,calViewMonth,1).getDay();
+  const daysInMonth=new Date(calViewYear,calViewMonth+1,0).getDate();
+  const daysInPrev=new Date(calViewYear,calViewMonth,0).getDate();
+  const cells=[];
+  for(let i=firstDay-1;i>=0;i--) cells.push({day:daysInPrev-i,m:"prev"});
+  for(let d=1;d<=daysInMonth;d++) cells.push({day:d,m:"cur"});
+  while(cells.length%7!==0) cells.push({day:cells.length-daysInMonth-firstDay+1,m:"next"});
+  const wdHTML=HE_WD.map(d=>`<div class="cal-wd">${d}</div>`).join('');
+  const daysHTML=cells.map(c=>{
+    const d=new Date(calViewYear,calViewMonth,c.day);
+    const isToday=c.m==="cur"&&d.getTime()===today.getTime();
+    const past=c.m==="prev"||(c.m==="cur"&&d<today);
+    const sel=c.m==="cur"&&selectedDate&&selectedDate.getTime()===d.getTime();
+    const cls=['cal-day',c.m!=="cur"?"other-month":"",isToday?"today":"",sel?"selected":"",past?"past":""].filter(Boolean).join(' ');
+    return `<div class="${cls}" onclick="calClick(${c.day},'${c.m}')">${c.day}</div>`;
+  }).join('');
+  document.getElementById('add-calendar').innerHTML=`
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calNav(-1)">‹</button>
+      <span class="cal-month">${HE_MONTHS[calViewMonth]} ${calViewYear}</span>
+      <button class="cal-nav" onclick="calNav(1)">›</button>
+    </div>
+    <div class="cal-weekdays">${wdHTML}</div>
+    <div class="cal-days">${daysHTML}</div>`;
+}
+
+function calNav(dir){
+  calViewMonth+=dir;
+  if(calViewMonth<0){calViewMonth=11;calViewYear--;}
+  if(calViewMonth>11){calViewMonth=0;calViewYear++;}
+  renderCalendar();
+}
+
+function calClick(day,m){
+  if(m==="prev") return;
+  if(m==="next"){calNav(1);return;}
+  const d=new Date(calViewYear,calViewMonth,day);
+  const today=new Date();today.setHours(0,0,0,0);
+  if(d<today) return;
+  selectedDate=d;
+  const label=d.toLocaleDateString("he-IL",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const el=document.getElementById('selected-date-display');
+  el.textContent='📅 '+label;el.style.display='block';
+  renderCalendar();validateAdd();
+}
+
+function validateAdd(){
+  const prompt=document.getElementById('add-prompt').value.trim();
+  document.getElementById('add-btn').disabled=!prompt||!selectedDate;
+}
+
+async function doAddAlarm(){
+  const prompt=document.getElementById('add-prompt').value.trim();
+  if(!prompt||!selectedDate) return;
+  const hh=parseInt(document.getElementById('add-hh').value)||0;
+  const mm=parseInt(document.getElementById('add-mm').value)||0;
+  const dt=new Date(selectedDate);dt.setHours(hh,mm,0,0);
+  if(dt<new Date()){alert("⚠️ הזמן שבחרת כבר עבר. בחר שעה עתידית.");return;}
+  await api('/alarms','POST',{datetime:dt.getTime(),prompt});
+  showScreen('main');
+}
+
+// ── Settings ─────────────────────────────────────────────────
+async function loadSettingsForm(){
+  const s=await api('/settings');
+  document.getElementById('cfg-openai').value=s.openaiKey||'';
+  document.getElementById('cfg-email').value=s.toEmail||'';
+  document.getElementById('cfg-service').value=s.emailjsServiceId||'';
+  document.getElementById('cfg-template').value=s.emailjsTemplateId||'';
+  document.getElementById('cfg-pubkey').value=s.emailjsPublicKey||'';
+}
+
+async function saveSettings(){
+  await api('/settings','POST',{
+    openaiKey:document.getElementById('cfg-openai').value,
+    toEmail:document.getElementById('cfg-email').value,
+    emailjsServiceId:document.getElementById('cfg-service').value,
+    emailjsTemplateId:document.getElementById('cfg-template').value,
+    emailjsPublicKey:document.getElementById('cfg-pubkey').value
+  });
+  showScreen('main');
+}
+
+// Boot
+loadAlarms();loadLogs();
+</script>
+</body>
+</html>
