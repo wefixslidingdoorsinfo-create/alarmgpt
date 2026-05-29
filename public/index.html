@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AlarmGPT</title>
+<style>
+body{
+font-family:Arial;
+max-width:700px;
+margin:40px auto;
+padding:20px;
+}
+input,textarea{
+width:100%;
+padding:10px;
+margin:10px 0;
+}
+button{
+padding:12px 20px;
+cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<h1>AlarmGPT</h1>
+
+<label>Date & Time</label>
+<input id="datetime" type="datetime-local">
+
+<label>What should GPT do?</label>
+<textarea id="prompt" rows="6"></textarea>
+
+<button onclick="saveAlarm()">Create Alarm</button>
+
+<pre id="result"></pre>
+
+<script>
+async function saveAlarm(){
+
+const datetime=document.getElementById("datetime").value;
+const prompt=document.getElementById("prompt").value;
+
+const response=await fetch("/api/alarms",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+datetime,
+prompt,
+enabled:true
+})
+});
+
+const data=await response.json();
+
+document.getElementById("result").innerText=
+JSON.stringify(data,null,2);
+}
+</script>
+
+</body>
+</html>
