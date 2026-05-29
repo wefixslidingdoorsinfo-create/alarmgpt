@@ -8,13 +8,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, "data.json");
 
-// קריאת מפתחות מ-Railway Variables
 const ENV_SETTINGS = {
   openaiKey: process.env.OPENAI_API_KEY || "",
   toEmail: process.env.TO_EMAIL || "",
   emailjsServiceId: process.env.EMAILJS_SERVICE_ID || "",
   emailjsTemplateId: process.env.EMAILJS_TEMPLATE_ID || "",
   emailjsPublicKey: process.env.EMAILJS_PUBLIC_KEY || "",
+  emailjsPrivateKey: process.env.EMAILJS_PRIVATE_KEY || "",
 };
 
 app.use(express.json());
@@ -92,7 +92,7 @@ async function fireAlarm(alarm) {
     await saveData(data);
   } catch (err) { addLog(data, `❌ שגיאת ChatGPT: ${err.message}`); await saveData(data); return; }
 
-  const { emailjsServiceId, emailjsTemplateId, emailjsPublicKey, toEmail } = settings;
+  const { emailjsServiceId, emailjsTemplateId, emailjsPublicKey, emailjsPrivateKey, toEmail } = settings;
   if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey && toEmail) {
     try {
       addLog(data, "📧 שולח אימייל...");
@@ -100,8 +100,10 @@ async function fireAlarm(alarm) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          service_id: emailjsServiceId, template_id: emailjsTemplateId,
+          service_id: emailjsServiceId,
+          template_id: emailjsTemplateId,
           user_id: emailjsPublicKey,
+          accessToken: emailjsPrivateKey,
           template_params: { to_email: toEmail, alarm_time: timeLabel, alarm_prompt: alarm.prompt, gpt_response: gptResponse }
         })
       });
