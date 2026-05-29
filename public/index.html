@@ -1,65 +1,343 @@
 <!DOCTYPE html>
-<html>
+<html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AlarmGPT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-body{
-font-family:Arial;
-max-width:700px;
-margin:40px auto;
-padding:20px;
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080a0f;--card:#0e1117;--card2:#141720;--border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);--accent:#e8a020;--accent2:#f5c060;
+  --glow:rgba(232,160,32,0.15);--red:#f04060;--green:#30d080;
+  --text:#f0f2f8;--sub:#8892a8;
+  --mono:'DM Mono',monospace;--serif:'DM Serif Display',serif;--sans:'DM Sans',sans-serif;
 }
-input,textarea{
-width:100%;
-padding:10px;
-margin:10px 0;
-}
-button{
-padding:12px 20px;
-cursor:pointer;
-}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 600px 400px at 20% 10%,rgba(232,160,32,0.06) 0%,transparent 70%),radial-gradient(ellipse 400px 600px at 80% 80%,rgba(100,120,255,0.04) 0%,transparent 70%);pointer-events:none;z-index:0}
+.app{max-width:440px;margin:0 auto;min-height:100vh;position:relative;z-index:1;display:flex;flex-direction:column}
+.screen{display:none;flex-direction:column;flex:1;padding-bottom:100px;animation:fadeIn .25s ease}
+.screen.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.header{display:flex;align-items:center;justify-content:space-between;padding:24px 24px 0}
+.logo{display:flex;flex-direction:column;gap:4px}
+.logo-name{font-family:var(--serif);font-size:22px;color:var(--text);letter-spacing:-.5px}
+.server-dot{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--green);letter-spacing:1px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.icon-btn{width:40px;height:40px;border-radius:12px;border:1px solid var(--border2);background:var(--card);color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .2s}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,0.08)}
+.clock-wrap{display:flex;flex-direction:column;align-items:center;padding:32px 24px 28px}
+.clock-outer{position:relative;width:190px;height:190px;display:flex;align-items:center;justify-content:center}
+.clock-outer::before{content:'';position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 180deg,rgba(232,160,32,0.15),transparent 60%,rgba(232,160,32,0.05),transparent);animation:spin 12s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.clock-ring{width:172px;height:172px;border-radius:50%;border:1px solid var(--border2);background:radial-gradient(circle at 35% 30%,var(--card2),var(--bg));box-shadow:0 0 40px rgba(232,160,32,0.08),inset 0 0 30px rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative;z-index:1}
+.clock-time{font-family:var(--mono);font-size:40px;font-weight:500;color:var(--text);letter-spacing:-2px;line-height:1}
+.clock-secs{font-family:var(--mono);font-size:13px;color:var(--accent);opacity:.7}
+.clock-date{font-family:var(--sans);font-size:13px;color:var(--sub);margin-top:14px}
+.section{padding:0 24px}
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sec-label{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--sub);text-transform:uppercase}
+.sec-count{font-family:var(--mono);font-size:10px;color:var(--accent);background:rgba(232,160,32,.1);padding:2px 8px;border-radius:20px}
+.alarm-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px 20px;margin-bottom:10px;display:flex;align-items:center;gap:16px;transition:border-color .25s,box-shadow .25s;position:relative;overflow:hidden}
+.alarm-card::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%;background:var(--border);transition:background .25s;border-radius:0 18px 18px 0}
+.alarm-card.on::before{background:var(--accent)}
+.alarm-card.on{border-color:rgba(232,160,32,.2);box-shadow:0 4px 24px rgba(232,160,32,.06)}
+.alarm-card.fired-done::before{background:var(--green)}
+.a-time{min-width:72px}
+.a-time-big{font-family:var(--mono);font-size:26px;font-weight:500;color:var(--sub);line-height:1;letter-spacing:-1px;transition:color .25s}
+.alarm-card.on .a-time-big{color:var(--accent)}
+.a-date{font-family:var(--mono);font-size:10px;color:var(--sub);margin-top:4px;opacity:.7}
+.a-info{flex:1;min-width:0}
+.a-prompt{font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a-status{font-family:var(--mono);font-size:10px;margin-top:5px;letter-spacing:1px}
+.a-status.active{color:var(--green)}
+.a-status.done{color:var(--sub);opacity:.6}
+.toggle{width:42px;height:23px;border-radius:12px;background:var(--card2);border:1px solid var(--border2);cursor:pointer;position:relative;transition:all .3s;flex-shrink:0;padding:0}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle::after{content:'';position:absolute;top:2px;right:2px;width:17px;height:17px;border-radius:50%;background:rgba(255,255,255,.4);transition:transform .3s}
+.toggle.on::after{transform:translateX(-19px);background:white}
+.del-btn{background:none;border:none;color:var(--sub);cursor:pointer;font-size:16px;padding:6px;transition:color .2s;opacity:.5;flex-shrink:0}
+.del-btn:hover{color:var(--red);opacity:1}
+.empty{text-align:center;padding:40px 20px;border:1px dashed var(--border2);border-radius:18px}
+.empty-icon{font-size:36px;margin-bottom:12px;opacity:.4}
+.empty-text{font-size:14px;color:var(--sub);line-height:1.6}
+.fab{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#000;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 28px rgba(232,160,32,.4);transition:transform .2s,box-shadow .2s;z-index:100}
+.fab:hover{transform:translateX(-50%) scale(1.1);box-shadow:0 10px 36px rgba(232,160,32,.55)}
+.logs-wrap{padding:0 24px;margin-top:20px}
+.log-item{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.log-t{font-family:var(--mono);font-size:10px;color:var(--sub);flex-shrink:0;padding-top:1px}
+.log-m{color:var(--text);line-height:1.5}
+.view-head{display:flex;align-items:center;gap:14px;padding:24px 24px 0;margin-bottom:28px}
+.view-title{font-family:var(--serif);font-size:20px;color:var(--text)}
+.view-body{padding:0 24px;flex:1;overflow-y:auto}
+.field{margin-bottom:22px}
+.field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--sub);margin-bottom:10px}
+.field input,.field textarea{width:100%;background:var(--card);border:1px solid var(--border2);border-radius:14px;padding:15px 18px;color:var(--text);font-size:15px;font-family:var(--sans);outline:none;transition:border-color .2s,box-shadow .2s;resize:vertical;direction:rtl}
+.field input:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+.field textarea{min-height:90px;line-height:1.6}
+.time-row{display:flex;gap:10px}
+.time-row input{font-family:var(--mono);font-size:26px;text-align:center;padding:15px 8px;direction:ltr;letter-spacing:-1px}
+.cal{background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:20px;margin-bottom:22px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.cal-month{font-family:var(--serif);font-size:18px;color:var(--text)}
+.cal-nav{background:var(--card2);border:1px solid var(--border);color:var(--sub);border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.cal-nav:hover{border-color:var(--accent);color:var(--accent)}
+.cal-wds{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:8px}
+.cal-wd{text-align:center;font-family:var(--mono);font-size:9px;color:var(--sub);opacity:.6;padding:4px 0;letter-spacing:1px}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-d{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-family:var(--mono);font-size:12px;cursor:pointer;color:var(--text);transition:all .15s;border:1px solid transparent}
+.cal-d:hover:not(.past):not(.other){background:var(--card2);border-color:var(--border)}
+.cal-d.today{border-color:rgba(232,160,32,.4);color:var(--accent)}
+.cal-d.sel{background:var(--accent);color:#000;font-weight:700;border-color:var(--accent);box-shadow:0 2px 12px rgba(232,160,32,.3)}
+.cal-d.other{color:var(--sub);opacity:.3}
+.cal-d.past{opacity:.2;cursor:not-allowed}
+.date-pill{background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.2);border-radius:12px;padding:12px 16px;font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:22px;text-align:center;letter-spacing:1px}
+.btn{width:100%;padding:17px;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#000;border:none;border-radius:14px;font-size:14px;font-family:var(--mono);letter-spacing:2px;cursor:pointer;margin-top:10px;transition:opacity .2s,transform .15s;text-transform:uppercase}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn:not(:disabled):hover{opacity:.9;transform:translateY(-1px)}
+.infobox{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;font-size:13px;color:var(--sub);line-height:1.8;margin-bottom:22px}
+.infobox a{color:var(--accent);text-decoration:none}
+.infobox code{color:var(--accent);font-family:var(--mono);font-size:11px;background:rgba(232,160,32,.08);padding:1px 5px;border-radius:4px}
+.infobox strong{color:var(--text)}
+.divider{height:1px;background:var(--border);margin:26px 0}
 </style>
 </head>
 <body>
+<div class="app">
 
-<h1>AlarmGPT</h1>
+<div class="screen active" id="screen-main">
+  <div class="header">
+    <div class="logo">
+      <span class="logo-name">AlarmGPT</span>
+      <span class="server-dot"><span class="dot"></span>שרת פעיל 24/7</span>
+    </div>
+    <button class="icon-btn" onclick="showScreen('settings')">⚙️</button>
+  </div>
+  <div class="clock-wrap">
+    <div class="clock-outer">
+      <div class="clock-ring">
+        <div class="clock-time" id="clk-time">00:00</div>
+        <div class="clock-secs" id="clk-secs">00</div>
+      </div>
+    </div>
+    <div class="clock-date" id="clk-date"></div>
+  </div>
+  <div class="section">
+    <div class="sec-header">
+      <span class="sec-label">שעונים מעוררים</span>
+      <span class="sec-count" id="alarm-count" style="display:none"></span>
+    </div>
+    <div id="alarms-list"><div class="empty"><div class="empty-icon">⏰</div><div class="empty-text">לחץ + כדי להוסיף שעון מעורר<br>עם משימה ל-ChatGPT</div></div></div>
+  </div>
+  <div class="logs-wrap" id="logs-wrap" style="display:none">
+    <div class="sec-header"><span class="sec-label">יומן פעילות</span></div>
+    <div id="logs-list"></div>
+  </div>
+  <button class="fab" onclick="showScreen('add')">+</button>
+</div>
 
-<label>Date & Time</label>
-<input id="datetime" type="datetime-local">
+<div class="screen" id="screen-add">
+  <div class="view-head">
+    <button class="icon-btn" onclick="showScreen('main')">←</button>
+    <span class="view-title">שעון מעורר חדש</span>
+  </div>
+  <div class="view-body">
+    <div class="field"><label>תאריך</label><div class="cal" id="add-cal"></div></div>
+    <div id="date-pill" style="display:none" class="date-pill"></div>
+    <div class="field">
+      <label>שעה</label>
+      <div class="time-row">
+        <input type="number" id="add-hh" min="0" max="23" value="08" oninput="validateAdd()">
+        <input type="number" id="add-mm" min="0" max="59" value="00" oninput="validateAdd()">
+      </div>
+    </div>
+    <div class="field"><label>משימה ל-ChatGPT</label><textarea id="add-prompt" placeholder="לדוגמה: תכתוב לי סיכום חדשות הטכנולוגיה של היום" oninput="validateAdd()"></textarea></div>
+    <button class="btn" id="add-btn" onclick="doAdd()" disabled>הוסף שעון מעורר</button>
+  </div>
+</div>
 
-<label>What should GPT do?</label>
-<textarea id="prompt" rows="6"></textarea>
+<div class="screen" id="screen-settings">
+  <div class="view-head">
+    <button class="icon-btn" onclick="showScreen('main')">←</button>
+    <span class="view-title">הגדרות</span>
+  </div>
+  <div class="view-body">
+    <div class="infobox">💡 <strong>OpenAI API Key</strong> — נדרש לשליחת שאלות ל-ChatGPT.<br>קבל מפתח ב: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a></div>
+    <div class="field"><label>OpenAI API Key</label><input type="password" id="cfg-openai" placeholder="sk-..."></div>
+    <div class="divider"></div>
+    <div class="infobox">📧 <strong>EmailJS</strong> — שליחת תשובות GPT למייל (חינמי, 200/חודש).<br><br>1. הירשם ב <a href="https://www.emailjs.com" target="_blank">emailjs.com</a><br>2. צור Email Service + Template עם: <code>{{alarm_time}}</code>, <code>{{alarm_prompt}}</code>, <code>{{gpt_response}}</code></div>
+    <div class="field"><label>אימייל לשליחה</label><input type="email" id="cfg-email" placeholder="you@gmail.com"></div>
+    <div class="field"><label>EmailJS Service ID</label><input id="cfg-service" placeholder="service_xxxxxxx"></div>
+    <div class="field"><label>EmailJS Template ID</label><input id="cfg-template" placeholder="template_xxxxxxx"></div>
+    <div class="field"><label>EmailJS Public Key</label><input id="cfg-pubkey" placeholder="xxxxxxxxxxxxxxxxxxxx"></div>
+    <button class="btn" onclick="saveSettings()">שמור הגדרות</button>
+  </div>
+</div>
 
-<button onclick="saveAlarm()">Create Alarm</button>
-
-<pre id="result"></pre>
-
+</div>
 <script>
-async function saveAlarm(){
+const HE_M=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+const HE_W=["א","ב","ג","ד","ה","ו","ש"];
+let selDate=null,cvY,cvM;
 
-const datetime=document.getElementById("datetime").value;
-const prompt=document.getElementById("prompt").value;
-
-const response=await fetch("/api/alarms",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-datetime: new Date(datetime).toISOString(),
-prompt,
-enabled:true
-})
-
-});
-
-const data=await response.json();
-
-document.getElementById("result").innerText=
-JSON.stringify(data,null,2);
+function updateClock(){
+  const n=new Date();
+  document.getElementById('clk-time').textContent=n.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",hour12:false});
+  document.getElementById('clk-secs').textContent=String(n.getSeconds()).padStart(2,'0');
+  document.getElementById('clk-date').textContent=n.toLocaleDateString("he-IL",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 }
-</script>
+setInterval(updateClock,1000);updateClock();
 
+function showScreen(n){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+n).classList.add('active');
+  if(n==='main'){loadAlarms();loadLogs();}
+  if(n==='add') initAdd();
+  if(n==='settings') loadCfg();
+}
+
+async function api(path,method='GET',body){
+  const o={method,headers:{'Content-Type':'application/json'}};
+  if(body) o.body=JSON.stringify(body);
+  const r=await fetch('/api'+path,o);return r.json();
+}
+
+async function loadAlarms(){
+  const al=await api('/alarms');renderAlarms(al);
+}
+
+function renderAlarms(al){
+  const el=document.getElementById('alarms-list');
+  const cnt=document.getElementById('alarm-count');
+  if(!al||al.length===0){
+    el.innerHTML='<div class="empty"><div class="empty-icon">⏰</div><div class="empty-text">לחץ + כדי להוסיף שעון מעורר<br>עם משימה ל-ChatGPT</div></div>';
+    cnt.style.display='none';return;
+  }
+  cnt.textContent=al.length;cnt.style.display='inline';
+  el.innerHTML=al.map(a=>{
+    const dt=new Date(a.datetime);
+    const tStr=dt.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",hour12:false});
+    const dStr=dt.toLocaleDateString("he-IL",{day:"numeric",month:"short"});
+    const cls=['alarm-card',a.enabled&&!a.fired?'on':'',a.fired?'fired-done':''].filter(Boolean).join(' ');
+    const st=a.fired?'<div class="a-status done">✓ הופעל</div>':a.enabled?'<div class="a-status active">● פעיל</div>':'';
+    return `<div class="${cls}">
+      <div class="a-time"><div class="a-time-big">${tStr}</div><div class="a-date">${dStr}</div></div>
+      <div class="a-info"><div class="a-prompt">"${a.prompt}"</div>${st}</div>
+      <button class="toggle ${a.enabled&&!a.fired?'on':''}" onclick="toggleAlarm('${a.id}',${!a.enabled})"></button>
+      <button class="del-btn" onclick="delAlarm('${a.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function toggleAlarm(id,en){await api('/alarms/'+id,'PATCH',{enabled:en,fired:false});loadAlarms();}
+async function delAlarm(id){if(!confirm('למחוק שעון זה?'))return;await api('/alarms/'+id,'DELETE');loadAlarms();}
+
+async function loadLogs(){
+  const logs=await api('/logs');
+  const wrap=document.getElementById('logs-wrap');
+  const el=document.getElementById('logs-list');
+  if(!logs||logs.length===0){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  el.innerHTML=logs.map(l=>`<div class="log-item"><span class="log-t">${l.time}</span><span class="log-m">${l.msg}</span></div>`).join('');
+}
+
+setInterval(()=>{
+  if(document.getElementById('screen-main').classList.contains('active')){loadAlarms();loadLogs();}
+},20000);
+
+function initAdd(){
+  const now=new Date();now.setHours(0,0,0,0);
+  selDate=null;cvY=now.getFullYear();cvM=now.getMonth();
+  document.getElementById('add-hh').value="08";
+  document.getElementById('add-mm').value="00";
+  document.getElementById('add-prompt').value="";
+  document.getElementById('add-btn').disabled=true;
+  document.getElementById('date-pill').style.display='none';
+  renderCal();
+}
+
+function renderCal(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const fd=new Date(cvY,cvM,1).getDay();
+  const dim=new Date(cvY,cvM+1,0).getDate();
+  const dip=new Date(cvY,cvM,0).getDate();
+  const cells=[];
+  for(let i=fd-1;i>=0;i--) cells.push({d:dip-i,m:"p"});
+  for(let d=1;d<=dim;d++) cells.push({d,m:"c"});
+  while(cells.length%7!==0) cells.push({d:cells.length-dim-fd+1,m:"n"});
+  const wH=HE_W.map(d=>`<div class="cal-wd">${d}</div>`).join('');
+  const dH=cells.map(c=>{
+    const dt=new Date(cvY,cvM,c.d);
+    const iT=c.m==="c"&&dt.getTime()===today.getTime();
+    const past=c.m==="p"||(c.m==="c"&&dt<today);
+    const s=c.m==="c"&&selDate&&selDate.getTime()===dt.getTime();
+    const cls=['cal-d',c.m!=="c"?"other":"",iT?"today":"",s?"sel":"",past?"past":""].filter(Boolean).join(' ');
+    return `<div class="${cls}" onclick="calClick(${c.d},'${c.m}')">${c.d}</div>`;
+  }).join('');
+  document.getElementById('add-cal').innerHTML=`
+    <div class="cal-head">
+      <button class="cal-nav" onclick="calNav(-1)">‹</button>
+      <span class="cal-month">${HE_M[cvM]} ${cvY}</span>
+      <button class="cal-nav" onclick="calNav(1)">›</button>
+    </div>
+    <div class="cal-wds">${wH}</div>
+    <div class="cal-days">${dH}</div>`;
+}
+
+function calNav(d){cvM+=d;if(cvM<0){cvM=11;cvY--;}if(cvM>11){cvM=0;cvY++;}renderCal();}
+
+function calClick(day,m){
+  if(m==="p") return;
+  if(m==="n"){calNav(1);return;}
+  const d=new Date(cvY,cvM,day);
+  const t=new Date();t.setHours(0,0,0,0);
+  if(d<t) return;
+  selDate=d;
+  const pill=document.getElementById('date-pill');
+  pill.textContent='📅 '+d.toLocaleDateString("he-IL",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  pill.style.display='block';
+  renderCal();validateAdd();
+}
+
+function validateAdd(){
+  const p=document.getElementById('add-prompt').value.trim();
+  document.getElementById('add-btn').disabled=!p||!selDate;
+}
+
+async function doAdd(){
+  const prompt=document.getElementById('add-prompt').value.trim();
+  if(!prompt||!selDate) return;
+  const hh=parseInt(document.getElementById('add-hh').value)||0;
+  const mm=parseInt(document.getElementById('add-mm').value)||0;
+  const dt=new Date(selDate);dt.setHours(hh,mm,0,0);
+  if(dt<new Date()){alert("⚠️ הזמן שבחרת כבר עבר.");return;}
+  await api('/alarms','POST',{datetime:dt.toISOString(),prompt});
+  showScreen('main');
+}
+
+async function loadCfg(){
+  const s=await api('/settings');
+  document.getElementById('cfg-openai').value=s.openaiKey||'';
+  document.getElementById('cfg-email').value=s.toEmail||'';
+  document.getElementById('cfg-service').value=s.emailjsServiceId||'';
+  document.getElementById('cfg-template').value=s.emailjsTemplateId||'';
+  document.getElementById('cfg-pubkey').value=s.emailjsPublicKey||'';
+}
+
+async function saveSettings(){
+  await api('/settings','POST',{
+    openaiKey:document.getElementById('cfg-openai').value,
+    toEmail:document.getElementById('cfg-email').value,
+    emailjsServiceId:document.getElementById('cfg-service').value,
+    emailjsTemplateId:document.getElementById('cfg-template').value,
+    emailjsPublicKey:document.getElementById('cfg-pubkey').value
+  });showScreen('main');
+}
+
+loadAlarms();loadLogs();
+</script>
 </body>
 </html>
