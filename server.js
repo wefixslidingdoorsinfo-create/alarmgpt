@@ -8,6 +8,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, "data.json");
 
+// קריאת מפתחות מ-Railway Variables
+const ENV_SETTINGS = {
+  openaiKey: process.env.OPENAI_API_KEY || "",
+  toEmail: process.env.TO_EMAIL || "",
+  emailjsServiceId: process.env.EMAILJS_SERVICE_ID || "",
+  emailjsTemplateId: process.env.EMAILJS_TEMPLATE_ID || "",
+  emailjsPublicKey: process.env.EMAILJS_PUBLIC_KEY || "",
+};
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -57,7 +66,7 @@ app.get("/api/ping", (req, res) => res.json({ ok: true, time: new Date().toISOSt
 
 async function fireAlarm(alarm) {
   const data = await loadData();
-  const settings = data.settings || {};
+  const settings = { ...ENV_SETTINGS, ...(data.settings || {}) };
   const dt = new Date(alarm.datetime);
   const timeLabel = dt.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", hour12: false });
 
