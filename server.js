@@ -87,7 +87,14 @@ app.get("/api/logs", async (req, res) => {
 // ── Alarm firing logic ───────────────────────────────────────
 async function fireAlarm(alarm) {
   const data = await loadData();
-  const settings = data.settings || {};
+  const settings = {
+openaiKey: process.env.OPENAI_API_KEY,
+emailjsServiceId: process.env.EMAILJS_SERVICE_ID,
+emailjsTemplateId: process.env.EMAILJS_TEMPLATE_ID,
+emailjsPublicKey: process.env.EMAILJS_PUBLIC_KEY,
+toEmail: process.env.TO_EMAIL
+};
+
   const dt = new Date(alarm.datetime);
   const timeLabel = dt.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", hour12: false });
 
