@@ -47,10 +47,11 @@ headers:{
 "Content-Type":"application/json"
 },
 body:JSON.stringify({
-datetime,
+datetime: new Date(datetime).toISOString(),
 prompt,
 enabled:true
 })
+
 });
 
 const data=await response.json();
